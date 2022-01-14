@@ -5,10 +5,29 @@ import { selectPeople } from '../../reducers/people/selectors';
 import { matchPath } from 'react-router';
 import { getRouteConfig } from '../../../routes';
 import { MAIN_ROUTE, PEOPLE_DETAILS_ROUTE } from '../../../routes';
-import { LOAD_USER_DETAILS } from '../../reducers/peopleDetails/actions'
+import { LOAD_USER_DETAILS, LOAD_USER_DETAILS_FAILURE, LOAD_USER_DETAILS_SUCCESS } from '../../reducers/peopleDetails/actions'
 
-export function* loadPeopleDetails() {
+export function* loadPeopleDetails({payload}) {
+  const { id } = payload;
+  
+  try {
+    const request = yield call(
+      fetch,
+      `https://swapi.dev/api/people/${id}`
+    );
+    const data = yield apply(request, request.json);
 
+    yield put({
+      type: LOAD_USER_DETAILS_SUCCESS,
+      payload: data,
+    })
+  } catch (error) {
+    yield put({
+      type: LOAD_USER_DETAILS_FAILURE,
+      payload: error,
+    })
+  }
+  
 }
 
 // worker saga
@@ -73,4 +92,5 @@ export function* routeChangeSaga() {
 export default function* peopleSaga() {
   yield fork(routeChangeSaga);
   yield takeEvery(LOAD_USERS, loadPeopleList);
+  yield takeEvery(LOAD_USER_DETAILS, loadPeopleDetails)
 }
