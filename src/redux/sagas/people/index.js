@@ -2,6 +2,10 @@ import { call, takeEvery, put, apply, take, select, fork } from 'redux-saga/effe
 import { LOCATION_CHANGE } from 'connected-react-router';
 import { LOAD_USERS, LOAD_USERS_SUCCESS } from '../../reducers/people/actions';
 import { selectPeople } from '../../reducers/people/selectors';
+import { matchPath } from 'react-router';
+import { getRouteConfig } from '../../../routes';
+import { MAIN_ROUTE, PEOPLE_DETAILS_ROUTE } from '../../../routes';
+import { LOAD_USER_DETAILS } from '../../reducers/peopleDetails/actions'
 
 export function* loadPeopleDetails() {
 
@@ -26,14 +30,14 @@ export function* loadPeopleList({ payload }) {
   })
 }
 
-// worker saga
-export function* loadUsersOnRouteEnter() {
+// worker saga? now its watcher
+export function* routeChangeSaga() {
   while (true) {
     // take our action with "take" effect from redux-saga
     const action = yield take(LOCATION_CHANGE)
 
     // checking that our pathname is equal to main page and we can run our next code
-    if (action.payload.location.pathname === '/') {
+    if (matchPath(action.payload.location.pathname, getRouteConfig(MAIN_ROUTE))) {
       // select something from our state with "select" effect from redux-saga
       const state = yield select(selectPeople);
       const { page, search } = state;
@@ -44,7 +48,22 @@ export function* loadUsersOnRouteEnter() {
         payload: {
           page, search
         }
-      })
+      });
+    }
+
+    const detailsPage = matchPath(action.payload.location.pathname, getRouteConfig(PEOPLE_DETAILS_ROUTE));
+
+    if (detailsPage) {
+      const { id } = detailsPage.params;
+
+      if (id) {
+        yield put({
+        type: LOAD_USER_DETAILS,
+        payload: {
+          id, 
+        }
+      });
+      }
     }
   }
 }
@@ -52,6 +71,6 @@ export function* loadUsersOnRouteEnter() {
 // watcher saga means Saga that watches an action (here LOAD_USERS action)
 // on each matching action, it starts a function as its task (here loadPeopleList function, it is worker saga).
 export default function* peopleSaga() {
-  yield fork(loadUsersOnRouteEnter);
+  yield fork(routeChangeSaga);
   yield takeEvery(LOAD_USERS, loadPeopleList);
 }
